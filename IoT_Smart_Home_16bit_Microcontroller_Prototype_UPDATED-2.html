@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>16-bit IoT Smart Home Microcontroller Prototype</title>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:#eef2f6;color:#17202a}
+.container{max-width:1150px;margin:auto;padding:24px}
+header{background:#17202a;color:white;padding:22px;border-radius:16px;margin-bottom:18px}
+header h1{margin:0 0 7px;font-size:27px} header p{margin:0;color:#d9e2ec}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.card{background:white;border-radius:15px;padding:18px;box-shadow:0 3px 14px #00000012;margin-bottom:18px}
+h2{margin-top:0;font-size:20px}.row{display:flex;align-items:center;justify-content:space-between;gap:15px;margin:14px 0}
+input[type=range]{width:55%}
+button{border:0;border-radius:8px;padding:10px 13px;margin:4px;cursor:pointer;background:#2563eb;color:white;font-weight:600}
+button:hover{filter:brightness(.94)} button.gray{background:#667085}
+.status{font-weight:bold;padding:5px 10px;border-radius:20px;background:#f1f3f5}.on{color:#16803c;background:#e9f8ee}.off{color:#b42318}
+.device-area{display:flex;justify-content:space-around;gap:25px;flex-wrap:wrap;padding:12px}
+.device{text-align:center;min-width:150px}.device-icon{font-size:70px;display:inline-block}
+.fan-spin{animation:spin .45s linear infinite}.light-glow{filter:drop-shadow(0 0 18px #ffd54a);transform:scale(1.08)}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+pre{background:#111827;color:#e5e7eb;padding:14px;border-radius:10px;overflow:auto;min-height:120px}
+table{width:100%;border-collapse:collapse}td,th{padding:7px;border-bottom:1px solid #e5e7eb;text-align:left}
+.small{font-size:13px;color:#667085}.badge{display:inline-block;background:#e8f0fe;padding:5px 9px;border-radius:15px;font-weight:bold}
+@media(max-width:780px){.grid{grid-template-columns:1fr}.container{padding:12px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>🏠 16-bit IoT Smart Home Microcontroller</h1>
+<p>Software prototype of a custom instruction set: 16-bit instructions • 30 operations • 8 registers</p>
+</header>
+
+<div class="grid">
+<div class="card">
+<h2>🌡️ Simulated Sensors</h2>
+<div class="row"><span>Temperature: <b id="tempVal">32</b> °C</span>
+<input id="temp" type="range" min="-10" max="50" value="32" oninput="updateSensors()"></div>
+<div class="row"><span>Light level: <b id="lightVal">10</b> / 100</span>
+<input id="light" type="range" min="0" max="100" value="10" oninput="updateSensors()"></div>
+<p class="small">These inputs simulate sensor readings; no physical hardware is connected.</p>
+</div>
+
+<div class="card">
+<h2>🧠 Microcontroller</h2>
+<div class="row"><span>Instruction size</span><span class="badge">16 bits</span></div>
+<div class="row"><span>Opcode</span><span class="badge">5 bits</span></div>
+<div class="row"><span>Registers</span><span class="badge">8 × 3 bits</span></div>
+<div class="row"><span>Immediate field</span><span class="badge">8 bits</span></div>
+</div>
+</div>
+
+<div class="card">
+<h2>🏠 Smart Home Device Simulation</h2>
+<div class="device-area">
+<div class="device">
+<div id="fanIcon" class="device-icon">🌀</div>
+<h3>Fan</h3><span id="fanStatus" class="status off">OFF</span>
+</div>
+<div class="device">
+<div id="lightIcon" class="device-icon">💡</div>
+<h3>Light</h3><span id="lightStatus" class="status off">OFF</span>
+</div>
+</div>
+<p class="small" style="text-align:center">The animations represent simulated output states; they do not control physical appliances.</p>
+</div>
+
+<div class="card">
+<h2>⚙️ Execute Instructions</h2>
+<button onclick="execute('READ_TEMP')">READ_TEMP R1</button>
+<button onclick="execute('READ_LIGHT')">READ_LIGHT R2</button>
+<button onclick="execute('FAN_ON')">FAN_ON</button>
+<button onclick="execute('FAN_OFF')">FAN_OFF</button>
+<button onclick="execute('LIGHT_ON')">LIGHT_ON</button>
+<button onclick="execute('LIGHT_OFF')">LIGHT_OFF</button>
+<button onclick="autoControl()">AUTO SMART MODE</button>
+<button onclick="execute('SLEEP')" class="gray">SLEEP</button>
+<pre id="console">Ready. Execute an instruction to see its opcode and effect.</pre>
+</div>
+
+<div class="grid">
+<div class="card">
+<h2>🗃️ Registers</h2>
+<table><thead><tr><th>Register</th><th>Value</th></tr></thead><tbody id="regs"></tbody></table>
+</div>
+<div class="card">
+<h2>🔢 16-bit Instruction Formats</h2>
+<p><b>Two-register format</b></p>
+<pre>┌─────────┬─────┬─────┬─────────┐
+│ Opcode  │ R1  │ R2  │Reserved │
+│ 5 bits  │3 bit│3 bit│ 5 bits  │
+└─────────┴─────┴─────┴─────────┘
+       5 + 3 + 3 + 5 = 16 bits</pre>
+<p><b>Register + Immediate</b></p>
+<pre>┌─────────┬─────┬──────────┐
+│ Opcode  │ R1  │ Immediate│
+│ 5 bits  │3 bit│  8 bits  │
+└─────────┴─────┴──────────┘
+       5 + 3 + 8 = 16 bits</pre>
+</div>
+</div>
+
+<div class="card">
+<h2>📋 Complete 30-operation Instruction Set</h2>
+<table>
+<thead><tr><th>Opcode</th><th>Operation</th><th>Function</th></tr></thead>
+<tbody id="ops"></tbody>
+</table>
+</div>
+</div>
+
+<script>
+const operations=[
+["00000","ADD","Add"],["00001","SUB","Subtract"],["00010","MUL","Multiply"],["00011","DIV","Divide"],
+["00100","AND","Logical AND"],["00101","OR","Logical OR"],["00110","XOR","Logical XOR"],["00111","NOT","Logical NOT"],
+["01000","LOAD","Load data"],["01001","STORE","Store data"],["01010","MOV","Move data"],["01011","CMP","Compare"],
+["01100","INC","Increment"],["01101","DEC","Decrement"],["01110","SHL","Shift left"],["01111","SHR","Shift right"],
+["10000","READ_TEMP","Read temperature sensor"],["10001","READ_LIGHT","Read light sensor"],["10010","READ_DOOR","Read door sensor"],
+["10011","LIGHT_ON","Turn light on"],["10100","LIGHT_OFF","Turn light off"],["10101","FAN_ON","Turn fan on"],
+["10110","FAN_OFF","Turn fan off"],["10111","LOCK","Lock door"],["11000","UNLOCK","Unlock door"],
+["11001","JUMP","Jump to instruction"],["11010","BEQ","Branch if equal"],["11011","BNE","Branch if not equal"],
+["11100","SLEEP","Low-power mode"],["11101","HALT","Stop execution"]
+];
+let regs=[0,0,0,0,0,0,0,0], fanOn=false, lightOn=false;
+
+function updateSensors(){
+ document.getElementById("tempVal").textContent=document.getElementById("temp").value;
+ document.getElementById("lightVal").textContent=document.getElementById("light").value;
+}
+function showRegs(){document.getElementById("regs").innerHTML=regs.map((v,i)=>`<tr><td>R${i}</td><td>${v}</td></tr>`).join("")}
+function setFan(on){
+ fanOn=on; let icon=document.getElementById("fanIcon"), st=document.getElementById("fanStatus");
+ icon.classList.toggle("fan-spin",on); st.textContent=on?"ON":"OFF"; st.className="status "+(on?"on":"off");
+}
+function setLight(on){
+ lightOn=on; let icon=document.getElementById("lightIcon"), st=document.getElementById("lightStatus");
+ icon.classList.toggle("light-glow",on); st.textContent=on?"ON":"OFF"; st.className="status "+(on?"on":"off");
+}
+function execute(op){
+ const temp=+document.getElementById("temp").value, light=+document.getElementById("light").value;
+ const found=operations.find(x=>x[1]===op), opcode=found?found[0]:"-----";
+ let msg="";
+ if(op==="READ_TEMP"){regs[1]=temp; if(temp>30){setFan(true); msg=`R1 ← ${temp}\nTemperature > 30°C → FAN_ON executed automatically.\nFan output state = ON.`} else {setFan(false); msg=`R1 ← ${temp}\nTemperature ≤ 30°C → FAN_OFF executed automatically.\nFan output state = OFF.`}}
+ else if(op==="READ_LIGHT"){regs[2]=light; if(light<20){setLight(true); msg=`R2 ← ${light}\nLight level < 20 → LIGHT_ON executed automatically.\nLight output state = ON.`} else {setLight(false); msg=`R2 ← ${light}\nLight level ≥ 20 → LIGHT_OFF executed automatically.\nLight output state = OFF.`}}
+  else if(op==="FAN_ON"){setFan(true);msg="FAN_ON executed.\nFan animation started → output state = ON."}
+ else if(op==="FAN_OFF"){setFan(false);msg="FAN_OFF executed.\nFan animation stopped → output state = OFF."}
+ else if(op==="LIGHT_ON"){setLight(true);msg="LIGHT_ON executed.\nLight glow activated → output state = ON."}
+ else if(op==="LIGHT_OFF"){setLight(false);msg="LIGHT_OFF executed.\nLight glow removed → output state = OFF."}
+   else if(op==="SLEEP"){msg="SLEEP executed.\nController enters simulated low-power mode."}
+ document.getElementById("console").textContent=`Instruction: ${op}\nOpcode: ${opcode}\n\nExecution:\n${msg}`;
+ showRegs();
+}
+function autoControl(){
+ execute("READ_TEMP");
+ execute("READ_LIGHT");
+ document.getElementById("console").textContent += `\n\nAUTO SMART MODE:\nREAD_TEMP → automatic FAN_ON/FAN_OFF\nREAD_LIGHT → automatic LIGHT_ON/LIGHT_OFF`;
+}
+document.getElementById("ops").innerHTML=operations.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}</td><td>${x[2]}</td></tr>`).join("");
+showRegs(); updateSensors();
+</script>
+</body>
+</html>
